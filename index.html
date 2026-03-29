@@ -277,6 +277,34 @@ header p{font-size:.85rem;color:var(--text-muted);margin-top:12px;line-height:1.
 .m-domain-title{font-size:.6rem;color:var(--text-muted);letter-spacing:.05em;display:block;margin-bottom:2px}
 .m-domain-text{color:var(--text-sub)}
 
+/* ── 오늘의 운세 ── */
+.today-date-badge{
+  display:inline-block;font-size:.72rem;color:var(--gold);
+  border:1px solid var(--gold-dim);border-radius:20px;
+  padding:4px 16px;letter-spacing:.08em;
+}
+.today-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.today-card{
+  background:var(--surface);border:1px solid var(--surface3);
+  border-radius:var(--radius);padding:16px 16px 14px;
+  position:relative;overflow:hidden;transition:border-color .2s;
+}
+.today-card:hover{border-color:var(--gold-dim)}
+.today-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.today-card.wealth::before{background:linear-gradient(90deg,#c8a000,#e8c870)}
+.today-card.career::before{background:linear-gradient(90deg,#8899bb,#aabbd0)}
+.today-card.love::before{background:linear-gradient(90deg,#d05040,#e07060)}
+.today-card.health::before{background:linear-gradient(90deg,#4a9c6a,#6ab880)}
+.today-cat-header{display:flex;align-items:center;gap:7px;margin-bottom:8px}
+.today-cat-icon{font-size:1.2rem}
+.today-cat-name{font-size:.82rem;color:var(--text-sub);letter-spacing:.06em;font-weight:600}
+.today-stars{font-size:.88rem;letter-spacing:1px;margin-bottom:7px;line-height:1}
+.today-score-bar{height:3px;background:var(--surface3);border-radius:2px;margin-bottom:9px;overflow:hidden}
+.today-score-fill{height:3px;border-radius:2px;transition:width .6s ease}
+.today-msg-good{font-size:.76rem;color:var(--text);line-height:1.65;margin-bottom:6px}
+.today-msg-caution{font-size:.72rem;color:var(--text-muted);line-height:1.6}
+.today-msg-caution::before{content:'⚠ ';color:var(--caution)}
+
 /* ── 푸터 ── */
 footer{text-align:center;padding:32px 20px;color:var(--text-muted);font-size:.75rem;border-top:1px solid var(--surface2)}
 
@@ -386,6 +414,9 @@ footer{text-align:center;padding:32px 20px;color:var(--text-muted);font-size:.75
         <span><span class="dot" style="background:rgba(201,168,76,.6);border:1px dashed var(--gold)"></span>현재</span>
       </div>
     </div>
+
+    <div class="section-title">오늘의 운세 今日運勢</div>
+    <div id="today-grid-wrap"></div>
 
     <div class="section-title" id="monthly-heading">2026년 월별 운세 月別運勢</div>
     <div class="month-grid" id="month-grid"></div>
@@ -703,6 +734,7 @@ const PILLAR_BRANCH_REAL = [
 ];
 function getPillarRealMeaning(stem, branch, pos){
   // pos: 0=년주, 1=월주, 2=일주, 3=시주
+  if(stem < 0 || branch < 0) return '';  // 시주 모를 때 방어
   const se = EL_STEM[stem], be = EL_BRANCH[branch];
   return PILLAR_STEM_REAL[se][pos] + ' ' + PILLAR_BRANCH_REAL[be][pos];
 }
@@ -1422,6 +1454,124 @@ function calcMonthScore(year, gMonth, dayEl, yong, daeuns, birthYear){
   return Math.min(95, Math.max(10, score + (Math.random()-0.5)*7));
 }
 
+// ── 오늘의 운세 메시지 (십신별 × 카테고리)
+const TODAY_MSGS = {
+  재물:{
+    비겁:['경쟁이 심한 날이에요. 독창적인 방법으로 새 수입처를 찾아보세요.','공동 투자나 동업 관련 결정은 오늘 미루는 게 좋아요.'],
+    식상:['아이디어나 재능을 발휘해 수입으로 연결할 수 있는 날이에요.','충동 소비에 주의하세요. 마음에 드는 물건이 있어도 하루 더 생각해보세요.'],
+    재성:['재물 운이 강한 날. 협상·계약·거래에 적극적으로 나서도 좋아요.','큰 지출이나 투자는 신중하게 따져보세요.'],
+    관성:['지출이 늘어날 수 있는 날. 불필요한 소비를 줄이세요.','급하게 돈을 빌리거나 보증 서는 일은 피하는 게 좋아요.'],
+    인성:['안정적인 수입이나 뜻밖의 지원을 받을 수 있는 날이에요.','새로운 투자보다 현재 자산을 지키는 데 집중하세요.'],
+  },
+  직장:{
+    비겁:['동료와 협력하면 시너지가 나는 날. 팀워크를 발휘해보세요.','경쟁이 심해질 수 있으니 자신의 성과를 꾸준히 쌓아가세요.'],
+    식상:['창의적인 아이디어를 발표하거나 제안하기 좋은 날이에요.','일을 너무 많이 벌여놓으면 마무리가 힘들 수 있어요.'],
+    재성:['실질적인 성과를 인정받거나 보상이 따르는 날이에요.','실속을 챙기면서도 주변 관계를 놓치지 마세요.'],
+    관성:['상사나 조직의 인정을 받을 수 있는 날. 책임감을 보여주세요.','압박감이 커질 수 있으니 스트레스 관리가 중요해요.'],
+    인성:['윗사람의 도움이나 지원을 받을 수 있는 날이에요.','새로운 도전보다 기존 업무를 꼼꼼히 마무리하는 것이 좋아요.'],
+  },
+  연애:{
+    비겁:['친구나 지인 사이에서 특별한 감정이 싹틀 수 있어요.','연인이 있다면 제3자로 인한 오해가 생기지 않도록 주의하세요.'],
+    식상:['자신을 솔직하게 표현하면 상대방의 마음을 움직일 수 있어요.','감정이 앞서 실수하지 않도록 잠깐 생각하고 행동하세요.'],
+    재성:['이성과의 만남이나 새로운 인연이 생길 수 있는 날이에요.','지나친 기대나 계산적인 태도는 관계를 멀어지게 해요.'],
+    관성:['파트너와 현실적인 이야기를 나누기 좋은 날이에요.','상대에 대한 기대가 너무 높으면 실망으로 이어질 수 있어요.'],
+    인성:['상대방에게 진심으로 배려받는 느낌을 받을 수 있는 날이에요.','혼자만의 시간도 관계 회복에 도움이 돼요.'],
+  },
+  건강:{
+    비겁:['체력이 넘치는 날. 운동이나 야외 활동에 좋아요.','과신하다 부상이 올 수 있으니 준비 운동을 꼭 하세요.'],
+    식상:['에너지 발산이 잘 되는 날. 가벼운 운동이 기분을 좋게 해줘요.','소화기 계통에 부담이 가지 않도록 과식은 피하세요.'],
+    재성:['활동량이 많아지기 쉬운 날. 충분한 수분 섭취와 휴식을 챙기세요.','과로 주의. 에너지가 분산되지 않도록 집중력을 유지하세요.'],
+    관성:['스트레스가 신체에 영향을 줄 수 있는 날이에요.','면역력이 떨어질 수 있으니 무리한 일정은 조정하세요.'],
+    인성:['몸과 마음이 회복되는 에너지가 강한 날이에요.','충분한 휴식과 영양 보충이 오늘의 최선이에요.'],
+  },
+};
+
+function renderTodayFortune(birthYear, dayEl, yong, daeuns){
+  const now = new Date();
+  const ty=now.getFullYear(), tm=now.getMonth()+1, td=now.getDate();
+
+  // 오늘 일주·월주·년주
+  const dayP = getDayPillar(ty, tm, td);
+  const yrP  = getYearStemBranch(ty, tm, td);
+  const moBr = getMonthBranch(tm, td);
+  const moSt = getMonthStem(yrP.stem, moBr);
+
+  const tEl  = EL_STEM[dayP.stem];
+  const tbEl = EL_BRANCH[dayP.branch];
+  const shiShin = getShiShin(dayEl, tEl);
+
+  // 기본 점수 (용신 상성)
+  let base = 50;
+  if(tEl===yong)                           base+=22;
+  else if(GENERATING[(tEl+4)%5]===yong)   base+=11;
+  else if(CONTROLLING[tEl]===yong)         base-=18;
+  else if(tEl===CONTROLLING[yong])         base-=10;
+  if(tbEl===yong)                          base+=10;
+  else if(CONTROLLING[tbEl]===yong)        base-=7;
+  // 현재 대운 영향
+  const age = ty - birthYear;
+  let cur = daeuns[0];
+  for(const d of daeuns) if(age>=d.startAge) cur=d;
+  const dEl = EL_STEM[cur.stem];
+  if(dEl===yong) base+=5; else if(CONTROLLING[dEl]===yong) base-=5;
+  base = Math.min(88, Math.max(22, base));
+
+  // 카테고리별 보정
+  const ADJ = {
+    비겁:{재물:-5,직장:-3,연애:+4,건강:+8},
+    식상:{재물:+8,직장:+3,연애:+13,건강:-3},
+    재성:{재물:+16,직장:+5,연애:+10,건강:-8},
+    관성:{재물:-11,직장:+13,연애:-6,건강:-13},
+    인성:{재물:-5,직장:+9,연애:+3,건강:+16},
+  };
+  const a = ADJ[shiShin]||{재물:0,직장:0,연애:0,건강:0};
+  const rnd = ()=>(Math.random()-0.5)*5;
+  const sc = {
+    재물: Math.min(93,Math.max(18, Math.round(base+a.재물+rnd()))),
+    직장: Math.min(93,Math.max(18, Math.round(base+a.직장+rnd()))),
+    연애: Math.min(93,Math.max(18, Math.round(base+a.연애+rnd()))),
+    건강: Math.min(93,Math.max(18, Math.round(base+a.건강+rnd()))),
+  };
+
+  function stars(s){
+    const n = s>=80?5:s>=65?4:s>=50?3:s>=35?2:1;
+    return `<span style="color:var(--gold)">${'★'.repeat(n)}</span><span style="color:var(--surface3)">${'★'.repeat(5-n)}</span>`;
+  }
+  function barColor(s){ return s>=65?'var(--good)':s>=45?'var(--caution)':'var(--bad)'; }
+
+  const cats=[
+    {key:'재물',icon:'💰',label:'재물운',cls:'wealth'},
+    {key:'직장',icon:'💼',label:'직장운',cls:'career'},
+    {key:'연애',icon:'💕',label:'연애운',cls:'love'},
+    {key:'건강',icon:'🌿',label:'건강운',cls:'health'},
+  ];
+  const WD=['일','월','화','수','목','금','토'];
+  const dateStr=`${ty}년 ${tm}월 ${td}일 (${WD[now.getDay()]})`;
+  const pillarStr=`${STEMS[yrP.stem]}${BRANCHES[yrP.branch]}년 ${STEMS[moSt]}${BRANCHES[moBr]}월 ${STEMS[dayP.stem]}${BRANCHES[dayP.branch]}일`;
+
+  let html=`<div style="text-align:center;margin-bottom:16px">
+    <span class="today-date-badge">📅 ${dateStr} · ${pillarStr}</span>
+    <div style="font-size:.72rem;color:var(--text-muted);margin-top:6px">오늘 일진: <span style="color:${EL_COLOR[tEl]}">${STEMS[dayP.stem]}${BRANCHES[dayP.branch]}</span> — ${STEM_MUSANG[dayP.stem]}</div>
+  </div><div class="today-grid">`;
+
+  for(const c of cats){
+    const s=sc[c.key], msg=TODAY_MSGS[c.key][shiShin];
+    const pct=Math.round((s-18)/75*100);
+    html+=`<div class="today-card ${c.cls} fade-in">
+      <div class="today-cat-header">
+        <span class="today-cat-icon">${c.icon}</span>
+        <span class="today-cat-name">${c.label}</span>
+      </div>
+      <div class="today-stars">${stars(s)}</div>
+      <div class="today-score-bar"><div class="today-score-fill" style="width:${pct}%;background:${barColor(s)}"></div></div>
+      <div class="today-msg-good">${msg[0]}</div>
+      <div class="today-msg-caution">${msg[1]}</div>
+    </div>`;
+  }
+  html+='</div>';
+  document.getElementById('today-grid-wrap').innerHTML=html;
+}
+
 function renderMonthlyCards(birthYear, dayEl, yong, daeuns){
   const currentYear  = 2026;
   const currentMonth = new Date().getMonth() + 1;
@@ -1671,6 +1821,7 @@ function renderYearCards(birthYear, birthMonth, birthDay, dayEl, yong, saju, dae
       }
       setTimeout(()=>renderLifeChart(scores, calcYear, currentYear),50);
 
+      renderTodayFortune(calcYear, dayEl, yong, daeunInfo.daeuns);
       renderMonthlyCards(calcYear, dayEl, yong, daeunInfo.daeuns);
       renderYearCards(calcYear, calcMonth, calcDay, dayEl, yong, saju, daeunInfo.daeuns, strong);
 
